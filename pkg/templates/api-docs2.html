@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta
+		content="width=device-width, initial-scale=1, shrink-to-fit=no"
+		name="viewport"
+	/>
+	<title>Api Docs</title>
+</head>
+<body>
+<div id="redoc-container"></div>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="http://localhost:8000/api/docs/try-it-out.js"></script>
+<script>
+	RedocTryItOut.init(
+		'http://localhost:8000/api/docs/openapi.json',
+		{
+			redocVersion: '2.5.0',
+			defaultBackgroundColor: '#27272a',
+		},
+		document.getElementById('redoc_container'),
+	);
+</script>
+<link rel="stylesheet" href="http://localhost:8000/api/docs/swagger-ui.css" />
+</body>
+</html>
