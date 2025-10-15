@@ -23,18 +23,28 @@ type DBConfig struct {
 	User     string
 	Password string
 }
-
+type S3Config struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	UseSSL    bool
+	BaseURL   string
+}
 type Config struct {
 	Port      string
 	JWTSecret string
 	DB        DBConfig
 	CORS      CORSConfig
+	S3        S3Config
 }
 
 func MustLoad() *Config {
 	if err := dotenv.LoadEnv(".env"); err != nil {
 		panic(errors.Wrap(err, "failed to load .env"))
 	}
+
+	useSSL := getEnv("S3_USE_SSL", "true") == "true"
 
 	return &Config{
 		Port:      getEnv("PORT", "3000"),
@@ -52,6 +62,14 @@ func MustLoad() *Config {
 			AllowHeaders:     strings.Split(getEnv("ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization"), ","),
 			AllowCredentials: getEnv("ALLOW_CREDENTIALS", "true") == "true",
 			ExposeHeaders:    strings.Split(getEnv("EXPOSE_HEADERS", "Authorization"), ","),
+		},
+		S3: S3Config{
+			Endpoint:  getEnv("S3_ENDPOINT", "localhost:9000"),
+			AccessKey: mustGetEnv("S3_ACCESS_KEY"),
+			SecretKey: mustGetEnv("S3_SECRET_KEY"),
+			Bucket:    getEnv("S3_BUCKET", "buildandfly"),
+			UseSSL:    useSSL,
+			BaseURL:   getEnv("S3_BASE_URL", ""), // optional
 		},
 	}
 }
@@ -74,25 +92,4 @@ func BuildDBConnectionString(cfg DBConfig) string {
 	return "postgres://" + cfg.User + ":" + cfg.Password +
 		"@" + cfg.Host + ":" + cfg.Port + "/" + cfg.Name +
 		"?sslmode=disable"
-}
-func MustLoadTest() *Config {
-	// Используем значения по умолчанию для тестов
-	return &Config{
-		Port:      "3000",
-		JWTSecret: "test-secret-key",
-		DB: DBConfig{
-			Host:     "localhost",
-			Port:     "5432",
-			Name:     "tasker_test",
-			User:     "postgres",
-			Password: "password",
-		},
-		CORS: CORSConfig{
-			AllowOrigins:     []string{"http://localhost:3000"},
-			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-			AllowCredentials: true,
-			ExposeHeaders:    []string{"Authorization"},
-		},
-	}
 }

@@ -28,19 +28,20 @@ func (c *AuthController) RegisterController(i *dtos.Registerdtos, ctx fiber.Ctx)
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	user, err := c.service.Register(ctx, *i)
+	user, err := c.service.Register(ctx.Context(), *i)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Registration failed"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(user)
 }
+
 func (c *AuthController) LoginController(i *dtos.LoginRequest, ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&i); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	token, user, exp, err := c.service.Login(ctx, i.Login, i.Password)
+	token, user, exp, err := c.service.Login(ctx.Context(), i.Login, i.Password)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid credentials"})
 	}

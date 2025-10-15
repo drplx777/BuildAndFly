@@ -4,43 +4,58 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// NewPool создаёт пул соединений с ретраями и создает таблицы.
 func NewPool(ctx context.Context, connString string) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config: %w", err)
 	}
 
-	config.MaxConns = 10
-	config.MinConns = 2
-	config.HealthCheckPeriod = 1 * time.Minute
-	config.MaxConnLifetime = 30 * time.Minute
+	// Настройки можно вынести в конфиг, сейчас разумные дефолты
+	config.MaxConns = 20
+	config.MinConns = 1
+	config.HealthCheckPeriod = 30 * time.Second
+	config.MaxConnLifetime = time.Hour
 
 	var pool *pgxpool.Pool
 	const maxAttempts = 10
 	for i := 0; i < maxAttempts; i++ {
 		pool, err = pgxpool.NewWithConfig(ctx, config)
 		if err == nil {
-			err = pool.Ping(ctx)
+			// отдельный короткий таймаут на ping
+			pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			err = pool.Ping(pingCtx)
+			cancel()
 			if err == nil {
 				break
 			}
+			// если ping не прошёл — закроем пул и попробуем снова
+			pool.Close()
 		}
+
 		if i < maxAttempts-1 {
-			delay := time.Second * time.Duration(i*2)
-			log.Printf("Database connection failed (attempt %d/%d), retrying in %v: %v", i+1, maxAttempts, delay, err)
+			delay := time.Duration(math.Pow(2, float64(i))) * time.Second
+			if delay > 30*time.Second {
+				delay = 30 * time.Second
+			}
+			log.Printf("DB connect attempt %d/%d failed, retrying in %v: %v", i+1, maxAttempts, delay, err)
 			time.Sleep(delay)
 		}
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", maxAttempts, err)
 	}
 
+	// создаём таблицы/индексы/статические данные
 	if err := createTables(ctx, pool); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("create tables: %w", err)
 	}
 
@@ -49,6 +64,7 @@ func NewPool(ctx context.Context, connString string) (*pgxpool.Pool, error) {
 }
 
 func createTables(ctx context.Context, pool *pgxpool.Pool) error {
+	// расширение для gen_random_uuid()
 	if _, err := pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pgcrypto;`); err != nil {
 		return fmt.Errorf("create extension pgcrypto: %w", err)
 	}
@@ -134,7 +150,7 @@ func createTables(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 
-	// Добавляем foreign key constraint отдельно с проверкой существования
+	// добавляем FK constraint на cover_media (если ещё нет)
 	fkCheckQuery := `
 	DO $$ 
 	BEGIN 
@@ -155,6 +171,22 @@ func createTables(ctx context.Context, pool *pgxpool.Pool) error {
 			log.Printf("rollback error after exec fail: %v", rbErr)
 		}
 		return fmt.Errorf("exec fk constraint failed: %w", err)
+	}
+
+	// insert default roles
+	roleInsert := `INSERT INTO roles (role) VALUES ('user') ON CONFLICT (role) DO NOTHING;`
+	if _, err := tx.Exec(ctx, roleInsert); err != nil {
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Printf("rollback error after exec fail: %v", rbErr)
+		}
+		return fmt.Errorf("insert default role 'user' failed: %w", err)
+	}
+	roleInsertAdmin := `INSERT INTO roles (role) VALUES ('admin') ON CONFLICT (role) DO NOTHING;`
+	if _, err := tx.Exec(ctx, roleInsertAdmin); err != nil {
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Printf("rollback error after exec fail: %v", rbErr)
+		}
+		return fmt.Errorf("insert default role 'admin' failed: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

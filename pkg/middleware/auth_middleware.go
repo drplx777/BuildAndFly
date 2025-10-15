@@ -8,8 +8,7 @@ import (
 
 func AuthMiddleware(authService *service.AuthService) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		// пропускаем публичные роуты
-		if c.Path() == "/api/login" || c.Path() == "/api/register" {
+		if c.Path() == "/api/auth/login" || c.Path() == "/api/auth/reg" || c.Path() == "/health" {
 			return c.Next()
 		}
 
@@ -25,19 +24,23 @@ func AuthMiddleware(authService *service.AuthService) fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})
 		}
 
-		// sub может прийти как float64 — приведём к int
-		userID := 0
-		switch v := claims["sub"].(type) {
-		case float64:
-			userID = int(v)
-		case int:
-			userID = v
-		case int64:
-			userID = int(v)
+		userIDStr := ""
+		if v, ok := claims["sub"].(string); ok {
+			userIDStr = v
 		}
 
-		c.Locals("userID", userID)
-		c.Locals("userRole", claims["role"])
+		roleStr := ""
+		if r, ok := claims["role"].(string); ok {
+			roleStr = r
+		}
+
+		if userIDStr == "" {
+			slog.Warn("sub claim empty")
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
+		}
+
+		c.Locals("userID", userIDStr)
+		c.Locals("userRole", roleStr)
 
 		return c.Next()
 	}

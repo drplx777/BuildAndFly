@@ -237,3 +237,12 @@ func (s *AuthService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.Us
 	user.Password = ""
 	return &user, nil
 }
+
+func (s *AuthService) SetUserRole(ctx context.Context, userID uuid.UUID, roleName string) error {
+	roleID, err := s.getOrCreateRoleID(ctx, roleName)
+	if err != nil {
+		return err
+	}
+	_, err = s.dbPool.Exec(ctx, `UPDATE users SET role_id = $1, updated_at = now() WHERE id = $2`, roleID, userID)
+	return err
+}
