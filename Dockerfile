@@ -8,11 +8,8 @@ RUN go mod download
 
 COPY . .
 
-# Если main.go в cmd
-RUN CGO_ENABLED=0 GOOS=linux go build -o /buildANDfly ./cmd
-
-# Или если main.go в корне cmd
-RUN CGO_ENABLED=0 GOOS=linux go build -o /buildANDfly ./cmd/main.go
+# Собираем приложение из server
+RUN CGO_ENABLED=0 GOOS=linux go build -o /buildANDfly ./server
 
 # Final stage
 FROM alpine:latest
