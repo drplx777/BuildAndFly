@@ -9,7 +9,7 @@ RUN go mod download
 COPY . .
 
 # Собираем приложение из server
-RUN CGO_ENABLED=0 GOOS=linux go build -o /buildANDfly ./server
+RUN CGO_ENABLED=0 GOOS=linux go build -o /buildANDfly ./cmd/server
 
 # Final stage
 FROM alpine:latest
