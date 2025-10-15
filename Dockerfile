@@ -13,7 +13,7 @@ WORKDIR /app
 
 COPY --from=builder /app/go.mod .
 COPY --from=builder /app/go.sum .
-COPY --from=builder /app/tasker .
+COPY --from=builder /app/BuildAndFly .
 
 EXPOSE 8000
 CMD ["./BFA"]
