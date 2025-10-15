@@ -1,22 +1,19 @@
+# Build stage
 FROM golang:1.25-alpine AS builder
-
 WORKDIR /app
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o tasker ./cmd/server
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+# Runtime stage
+FROM alpine:latest AS runner
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /app
 
-WORKDIR /root/
-COPY --from=builder /app/main .
-COPY --from=builder /app/templates ./templates
-COPY --from=builder /app/migrations ./migrations
-
-# Копируем .env файл в контейнер
-COPY .env .
+COPY --from=builder /app/go.mod .
+COPY --from=builder /app/go.sum .
+COPY --from=builder /app/tasker .
 
 EXPOSE 8000
-CMD ["./main"]
+CMD ["./BFA"]
