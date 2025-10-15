@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
@@ -8,8 +8,7 @@ RUN go mod download
 
 COPY . .
 
-# Собираем приложение из server
-RUN CGO_ENABLED=0 GOOS=linux go build -o /buildANDfly ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -o /buildANDfly ./cmd/server/main.go
 
 # Final stage
 FROM alpine:latest
