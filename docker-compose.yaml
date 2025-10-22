@@ -3,6 +3,9 @@ version: '3.8'
 services:
   app:
     build: .
+    image: buildandfly:latest
     ports:
-      - "8000:3000"
-    env_file: .env
+      - "8000:8080"
+    env_file:
+      - .env
+    restart: unless-stopped
