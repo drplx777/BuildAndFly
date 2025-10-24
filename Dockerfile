@@ -10,10 +10,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o bfa ./cmd/server
 FROM alpine:latest AS runner
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
-# чтобы rootpath нашёл go.mod
-COPY --from=builder /app/go.mod .
-COPY --from=builder /app/go.sum .
-COPY --from=builder /app/bfa .
+
+COPY --from=builder /app/go.mod /app/go.mod
+COPY --from=builder /app/go.sum /app.go.sum
+
+COPY --from=builder /app/bfa /app/bfa
+COPY --from=builder /app/pkg/templates /app/pkg/templates
 
 EXPOSE 8000
 CMD ["./bfa"]
