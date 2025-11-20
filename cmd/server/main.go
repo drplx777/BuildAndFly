@@ -68,6 +68,7 @@ func main() {
 		AllowCredentials: cfg.CORS.AllowCredentials,
 		ExposeHeaders:    cfg.CORS.ExposeHeaders,
 	}))
+	app.Use(middleware.AuthMiddleware(authService)) // auth on
 
 	//app.Get("/api/getuserbyJWT", authHandler.GetUserHandler)
 
