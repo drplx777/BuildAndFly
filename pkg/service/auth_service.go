@@ -211,15 +211,22 @@ func (s *AuthService) ValidateToken(tokenString string) (jwt.MapClaims, error) {
 	}
 	return claims, nil
 }
+func (s *AuthService) SetUserRole(ctx context.Context, userID uuid.UUID, roleName string) error {
+	roleID, err := s.getOrCreateRoleID(ctx, roleName)
+	if err != nil {
+		return err
+	}
+	_, err = s.dbPool.Exec(ctx, `UPDATE users SET role_id = $1, updated_at = now() WHERE id = $2`, roleID, userID)
+	return err
+}
+func (s *AuthService) GetUserByID(ctx context.Context, userID int) (*models.User, error) {
+	const query = `
+        SELECT id, name, surname, email, login, roleID, created_at, updated_at
+        FROM users WHERE id = $1
+    `
 
-// GetUserByID возвращает пользователя по UUID.
-func (s *AuthService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	const q = `
-		SELECT id, name, surname, email, login, role_id, created_at, updated_at
-		FROM users WHERE id = $1
-	`
 	var user models.User
-	if err := s.dbPool.QueryRow(ctx, q, id).Scan(
+	err := s.dbPool.QueryRow(ctx, query, userID).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Surname,
@@ -228,21 +235,7 @@ func (s *AuthService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.Us
 		&user.RoleID,
 		&user.CreatedAt,
 		&user.UpdatedAt,
-	); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	user.Password = ""
-	return &user, nil
-}
+	)
 
-func (s *AuthService) SetUserRole(ctx context.Context, userID uuid.UUID, roleName string) error {
-	roleID, err := s.getOrCreateRoleID(ctx, roleName)
-	if err != nil {
-		return err
-	}
-	_, err = s.dbPool.Exec(ctx, `UPDATE users SET role_id = $1, updated_at = now() WHERE id = $2`, roleID, userID)
-	return err
+	return &user, err
 }

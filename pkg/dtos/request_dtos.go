@@ -33,3 +33,19 @@ type MarkLessonCompleteDTO struct {
 	CourseID uuid.UUID `json:"course_id"`
 	LessonID uuid.UUID `json:"lesson_id"`
 }
+type GetUserDtos struct {
+	jwt string `json:"jwt"`
+}
+
+type UserResponse struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Email   string `json:"email"`
+	Login   string `json:"login"`
+	RoleID  int    `json:"role_id"`
+}
+
+type JWTInput struct {
+	token string `json:"token"`
+}

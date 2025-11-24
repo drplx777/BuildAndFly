@@ -2,9 +2,11 @@ package controllers
 
 import (
 	"buildANDfly/pkg/dtos"
+	"buildANDfly/pkg/models"
 	"buildANDfly/pkg/service"
 	. "github.com/KoNekoD/swaglay/pkg/adapters/swaglay_fiber"
 	"github.com/gofiber/fiber/v3"
+	"strconv"
 )
 
 type AuthController struct {
@@ -20,6 +22,7 @@ func (c *AuthController) RegisterRoutes(app *fiber.App) {
 	Fiber = app.Group("/api/auth")
 	PostI(api, "/reg", c.RegisterController, "register user")
 	PostI(api, "/login", c.LoginController, "login")
+	GetO(api, "/user-by_jwt", c.GetUserHandler, "user-by-jwt")
 
 }
 
@@ -58,4 +61,34 @@ func (c *AuthController) LoginController(i *dtos.LoginRequest, ctx fiber.Ctx) er
 	})
 
 	return ctx.Status(fiber.StatusOK).JSON(user)
+}
+
+func (c *AuthController) GetUserHandler(ctx fiber.Ctx) (*models.User, error) {
+	userIDVal := ctx.Locals("userID")
+	var userID int
+
+	switch v := userIDVal.(type) {
+	case int:
+		userID = v
+	case int64:
+		userID = int(v)
+	case float64:
+		userID = int(v)
+	case string:
+		// If it's a string, try to convert it
+		if parsed, err := strconv.Atoi(v); err == nil {
+			userID = parsed
+		} else {
+			return nil, fiber.NewError(fiber.StatusUnauthorized, "User not authenticated")
+		}
+	default:
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "User not authenticated")
+	}
+
+	user, err := c.service.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+
+	return user, nil
 }
