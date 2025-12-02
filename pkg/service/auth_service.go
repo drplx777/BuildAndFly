@@ -86,6 +86,7 @@ func (s *AuthService) Register(ctx context.Context, req dtos.Registerdtos) (*mod
 	}
 
 	// роль по умолчанию
+	//бубу
 	roleName := "user"
 	if strings.TrimSpace(req.Role) != "" {
 		roleName = strings.ToLower(strings.TrimSpace(req.Role))
